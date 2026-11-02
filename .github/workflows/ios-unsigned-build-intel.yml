@@ -41,6 +41,10 @@ jobs:
       - name: pub get
         run: flutter pub get
 
+      - name: Patch iOS plugin sources
+        working-directory: .
+        run: bash tooling/ios-ci-plugin-patches.sh
+
       - name: analyze
         run: flutter analyze
 
