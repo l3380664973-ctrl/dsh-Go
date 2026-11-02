@@ -37,7 +37,7 @@ class AdaptiveRail extends ConsumerWidget {
     required this.menuTooltip,
     required this.onSearch,
     required this.onHost,
-    required this.onWeb,
+    this.onWeb,
     required this.onSettings,
   });
 
@@ -45,7 +45,10 @@ class AdaptiveRail extends ConsumerWidget {
   final String menuTooltip;
   final VoidCallback onSearch;
   final VoidCallback onHost;
-  final VoidCallback onWeb;
+
+  /// 网页版 of the on-device engine. Null where the app runs no engine (iOS),
+  /// which hides the key instead of opening a page that cannot work.
+  final VoidCallback? onWeb;
   final VoidCallback onSettings;
 
   /// Top of the first key: centred on the chat header's bar.
@@ -109,13 +112,15 @@ class AdaptiveRail extends ConsumerWidget {
                     badge: StatusDot(tone: status.tone, size: 7),
                   ),
                   gap,
-                  GlassIconButton(
-                    key: const ValueKey('rail-web'),
-                    icon: AppIcons.webApp,
-                    tooltip: l10n.commonWeb,
-                    onPressed: onWeb,
-                  ),
-                  gap,
+                  if (onWeb != null) ...[
+                    GlassIconButton(
+                      key: const ValueKey('rail-web'),
+                      icon: AppIcons.webApp,
+                      tooltip: l10n.commonWeb,
+                      onPressed: onWeb!,
+                    ),
+                    gap,
+                  ],
                   GlassIconButton(
                     key: const ValueKey('rail-settings'),
                     icon: AppIcons.settings,

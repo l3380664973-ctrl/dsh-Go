@@ -14,6 +14,7 @@ import '../../features/agent_presets_page.dart';
 import '../../features/all_features_page.dart';
 import '../../features/permission_page.dart';
 import '../../pets/pet_settings_page.dart';
+import '../../../platform/app_platform.dart';
 import '../../phone/app_rules_page.dart';
 import '../../phone/dnd_mode_page.dart';
 import '../../phone/phone_control_screen.dart';
@@ -53,13 +54,16 @@ Widget settingsPage(SettingsPageId id, {String? sessionId}) => switch (id) {
   SettingsPageId.notifications => const NotificationSettingsPage(),
   SettingsPageId.replyPrefs => const ReplyPrefsPage(),
   SettingsPageId.sharedLinks => const HostedLinksPage(),
-  SettingsPageId.phone => const PhoneControlScreen(),
-  SettingsPageId.phoneAppRules => const PhoneAppRulesPage(),
-  SettingsPageId.phoneDnd => const PhoneDndPage(),
-  SettingsPageId.phoneUnlocks => const PhoneUnlockPage(),
-  SettingsPageId.engine => const EngineScreen(),
-  SettingsPageId.background => const BackgroundGuidePage(),
-  SettingsPageId.systemAccess => const SystemAccessPage(),
+  // Android-only pages land on the remote-host page on iOS, where the
+  // on-device engine, its OEM battery settings and the accessibility toggles
+  // do not exist (lib/platform/app_platform.dart).
+  SettingsPageId.phone => AppPlatform.supportsPhoneControl ? const PhoneControlScreen() : const RemoteScreen(),
+  SettingsPageId.phoneAppRules => AppPlatform.supportsPhoneControl ? const PhoneAppRulesPage() : const RemoteScreen(),
+  SettingsPageId.phoneDnd => AppPlatform.supportsPhoneControl ? const PhoneDndPage() : const RemoteScreen(),
+  SettingsPageId.phoneUnlocks => AppPlatform.supportsPhoneControl ? const PhoneUnlockPage() : const RemoteScreen(),
+  SettingsPageId.engine => AppPlatform.supportsLocalEngine ? const EngineScreen() : const RemoteScreen(),
+  SettingsPageId.background => AppPlatform.supportsBackgroundGuide ? const BackgroundGuidePage() : const RemoteScreen(),
+  SettingsPageId.systemAccess => AppPlatform.supportsSystemAccess ? const SystemAccessPage() : const RemoteScreen(),
   SettingsPageId.diagnostics => const DiagnosticsPage(),
   SettingsPageId.models => const ProvidersPage(),
   SettingsPageId.engineParams => const EngineSettingsHubPage(),

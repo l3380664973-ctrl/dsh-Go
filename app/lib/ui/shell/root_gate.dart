@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../launch/launch_state.dart';
+import '../../platform/app_platform.dart';
 import '../../runtime/local_footprint.dart';
 import '../../diagnostics/diagnostics_publish.dart';
 import '../../runtime/runtime_bridge.dart';
@@ -46,6 +47,10 @@ OnboardingStep? initialOnboardingStep({
   required OnboardingPrefs prefs,
   bool hasCustomProvider = false,
 }) {
+  // iOS: no on-device engine to install, no Android permissions to grant, so
+  // first run goes straight home — the chat asks for a remote host instead
+  // (lib/platform/app_platform.dart).
+  if (!AppPlatform.supportsLocalEngine) return null;
   final installedCurrent = status.installedVersion != null && status.installedVersion == status.bundledVersion;
   final needsRuntime = switch (status.phase) {
     RuntimePhase.notInstalled || RuntimePhase.installing => true,
@@ -244,6 +249,8 @@ class _RootGateState extends ConsumerState<RootGate> {
   void _maybeAutoStart() {
     if (_autoStartDone) return;
     _autoStartDone = true;
+    // No on-device engine on iOS: nothing to start (lib/platform/app_platform.dart).
+    if (!AppPlatform.supportsLocalEngine) return;
     final settings = ref.read(settingsProvider);
     if (!settings.autoStartLocal) return;
     final status = ref.read(localRuntimeProvider).status;

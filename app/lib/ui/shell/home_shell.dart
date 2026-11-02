@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../links/app_links.dart';
 import '../../pets/overlay_channel.dart' show petOverlayChannelProvider;
 import '../../pets/pet_overlay_bridge.dart';
+import '../../platform/app_platform.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../../state/drawer_view_state.dart' show drawerSelectionProvider;
 import '../../state/quick_panel_state.dart';
@@ -364,7 +365,10 @@ class _HomeShellState extends ConsumerState<HomeShell> with TickerProviderStateM
                             onSearch: _search,
                             onHost: () =>
                                 showHostSheet(context, onManage: () => _openDestination(DrawerDestination.remote)),
-                            onWeb: () => _openDestination(DrawerDestination.web),
+                            // 本机网页版 needs the on-device engine; hidden on iOS.
+                            onWeb: AppPlatform.supportsLocalEngine
+                                ? () => _openDestination(DrawerDestination.web)
+                                : null,
                             onSettings: () => _openDestination(DrawerDestination.settings),
                           ),
                           panel: layout.panelAvailable && sessionId != null

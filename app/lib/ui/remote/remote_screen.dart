@@ -79,7 +79,9 @@ class RemoteScreen extends ConsumerWidget {
     final saved = await Navigator.of(context)
         .push<SshHostConfig>(MaterialPageRoute(builder: (_) => const SshHostFormPage()));
     if (saved == null || !context.mounted) return;
-    final nothingHere = ref.read(localRuntimeProvider).status.runtimeMissing;
+    // iOS has nothing to run locally, so a newly added host is always the one
+    // to use (lib/platform/app_platform.dart).
+    final nothingHere = !AppPlatform.supportsLocalEngine || ref.read(localRuntimeProvider).status.runtimeMissing;
     if (nothingHere && ref.read(activeHostProvider).isLocal) await _use(context, ref, HostRef.ssh(saved.id));
   }
 
@@ -175,8 +177,8 @@ class _ActiveCard extends ConsumerWidget {
     final failed = status.phase == HostLinkPhase.failed && error != null;
     // No runtime on this phone: 本机 is nowhere to go back to.
     // iOS has no on-device engine to switch back to.
-    final canGoLocal = AppPlatform.supportsLocalEngine &&
-        ref.watch(localRuntimeProvider.select((s) => !s.status.runtimeMissing));
+    final canGoLocal =
+        AppPlatform.supportsLocalEngine && ref.watch(localRuntimeProvider.select((s) => !s.status.runtimeMissing));
     return OverviewCard(
       leading: OverviewGlyph(hostKindIcon(active.kind), tint: hostKindTint(active.kind)),
       title: Text(l10n.remoteActiveHost(name)),

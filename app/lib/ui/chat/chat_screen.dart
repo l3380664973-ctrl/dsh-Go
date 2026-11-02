@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../notify/chat_alerts.dart' show approvalText, questionText;
+import '../../platform/app_platform.dart';
 import '../../runtime/local_footprint.dart' show RuntimeMissing;
 import '../../runtime/runtime_bridge.dart' show RuntimePhase;
 import '../../runtime/runtime_state.dart' show localRuntimeProvider;
@@ -57,6 +58,7 @@ import '../pets/pet_stage.dart';
 import '../plugins/native/composer_strip.dart' show ComposerStripSlot;
 import '../plugins/native/native_composer_bar.dart';
 import '../plugins/native/native_taps.dart' show NativeComposerHost, NativeComposerScope;
+import '../remote/remote_screen.dart' show RemoteScreen;
 import '../safe_mode/engine_failure_card.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../session/session_detail_page.dart';
@@ -1319,11 +1321,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       ),
       _ => null,
     };
+    // iOS has no on-device engine: on the placeholder host the fix is adding a
+    // remote one, not installing a runtime (lib/platform/app_platform.dart).
+    final needsRemoteHost = local && !AppPlatform.supportsLocalEngine;
+    final idleOrRemote = needsRemoteHost
+        ? ChatIdleAction(
+            message: l10n.remoteHostsIntro,
+            label: l10n.remoteManageHosts,
+            onTap: () =>
+                unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RemoteScreen()))),
+          )
+        : idle;
     // A conversation open with nothing loaded while 本机 is down (a cold
     // start back into the last one, auto start off): the empty page with its
     // one fix rather than a blank list.
     final idleBlank =
-        idle != null && sessionId != null && ref.watch(chatProvider(sessionId).select((s) => s.items.isEmpty));
+        idleOrRemote != null && sessionId != null && ref.watch(chatProvider(sessionId).select((s) => s.items.isEmpty));
 
     // 只盯顶栏 / 输入条需要的几个字段:流式增量不重建整页。
     final chat = sessionId == null
@@ -1514,7 +1527,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                       connecting: connAsync.isLoading,
                                       starting: starting,
                                       tidying: tidying,
-                                      idle: idle,
+                                      idle: idleOrRemote,
                                       onReconnect: connAsync.hasError && !connAsync.isLoading && !failureCard
                                           ? _reconnect
                                           : null,

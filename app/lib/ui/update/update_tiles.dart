@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../platform/app_platform.dart';
 import '../../state/update_state.dart';
 import '../settings/settings_widgets.dart';
 import '../theme/app_icons.dart';
@@ -20,6 +21,9 @@ class AppUpdateTiles extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // iOS installs through the App Store / TestFlight / a re-signed build, so
+    // an APK self-updater has nothing to do there (lib/platform/app_platform.dart).
+    if (!AppPlatform.supportsApkUpdate) return const SizedBox.shrink();
     final update = ref.watch(appUpdateProvider);
     final controller = ref.read(appUpdateProvider.notifier);
     final tint = this.tint;

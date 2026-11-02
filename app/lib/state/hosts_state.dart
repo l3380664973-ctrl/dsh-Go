@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/l10n.dart';
+import '../platform/app_platform.dart';
 import '../remote/link_status.dart';
 import '../remote/relay/dsh_remote_backend.dart';
 import 'app_info.dart';
@@ -42,6 +43,13 @@ class HostRef {
   final String? name;
 
   bool get isLocal => kind == HostKind.local;
+
+  /// True when this host cannot exist on the running platform. iOS has no
+  /// on-device engine, so the placeholder [local] host — the value the app
+  /// starts on before a host is picked — means "no host chosen yet" there.
+  /// Callers use it to offer adding a remote host instead of installing the
+  /// runtime (see `lib/platform/app_platform.dart`).
+  bool get unusableHere => isLocal && !AppPlatform.supportsLocalEngine;
 
   String encode() => jsonEncode({'kind': kind.name, 'id': id, if (name != null) 'name': name});
 
