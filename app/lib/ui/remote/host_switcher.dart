@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../platform/app_platform.dart';
 import '../../runtime/local_footprint.dart';
 import '../../runtime/runtime_state.dart';
 import '../../state/connection_state.dart';
@@ -118,13 +119,15 @@ class HostSheet extends ConsumerWidget {
               SheetGroup(
                 margin: const EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.inset, 12),
                 children: [
-                  _HostRow(
-                    host: HostRef.local,
-                    title: l10n.commonThisPhone,
-                    subtitle: l10n.remoteThisPhoneDsh,
-                    active: active.isLocal,
-                    onTap: localMissing ? installLocal : () => pick(HostRef.local),
-                  ),
+                  // iOS has no on-device engine (see lib/platform/app_platform.dart).
+                  if (AppPlatform.supportsLocalEngine)
+                    _HostRow(
+                      host: HostRef.local,
+                      title: l10n.commonThisPhone,
+                      subtitle: l10n.remoteThisPhoneDsh,
+                      active: active.isLocal,
+                      onTap: localMissing ? installLocal : () => pick(HostRef.local),
+                    ),
                   for (final h in ssh)
                     _HostRow(
                       host: HostRef.ssh(h.id),

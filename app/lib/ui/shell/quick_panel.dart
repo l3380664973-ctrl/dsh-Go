@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../platform/app_platform.dart';
 import '../../state/quick_panel_state.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -56,7 +57,10 @@ class QuickPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final items = ref.watch(quickPanelProvider.select((p) => p.items));
+    // 本机网页版 / 本机引擎 only exist where the app runs the engine itself.
+    final items = ref
+        .watch(quickPanelProvider.select((p) => p.items))
+        .where((d) => AppPlatform.supportsLocalEngine || !d.needsLocalEngine);
     final content = Material(
       type: MaterialType.transparency,
       child: SafeArea(

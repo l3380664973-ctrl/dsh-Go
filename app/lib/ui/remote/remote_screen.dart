@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../platform/app_platform.dart';
 import '../../remote/relay/relay_backend.dart';
 import '../../runtime/local_footprint.dart';
 import '../../runtime/runtime_state.dart';
@@ -173,7 +174,9 @@ class _ActiveCard extends ConsumerWidget {
     void reconnect() => ref.read(remoteConnectionProvider(active).notifier).retry();
     final failed = status.phase == HostLinkPhase.failed && error != null;
     // No runtime on this phone: 本机 is nowhere to go back to.
-    final canGoLocal = ref.watch(localRuntimeProvider.select((s) => !s.status.runtimeMissing));
+    // iOS has no on-device engine to switch back to.
+    final canGoLocal = AppPlatform.supportsLocalEngine &&
+        ref.watch(localRuntimeProvider.select((s) => !s.status.runtimeMissing));
     return OverviewCard(
       leading: OverviewGlyph(hostKindIcon(active.kind), tint: hostKindTint(active.kind)),
       title: Text(l10n.remoteActiveHost(name)),

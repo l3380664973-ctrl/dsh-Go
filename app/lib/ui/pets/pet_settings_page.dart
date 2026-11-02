@@ -11,6 +11,7 @@ import '../../l10n/l10n.dart';
 import '../../pets/pet_prefs.dart';
 import '../../pets/pet_signals.dart';
 import '../../pets/pet_state.dart';
+import '../../platform/app_platform.dart';
 import '../common/expand_reveal.dart';
 import '../settings/settings_widgets.dart';
 import '../theme/app_icons.dart';
@@ -88,8 +89,9 @@ class PetSettingsPage extends ConsumerWidget {
                     ),
                 ],
               ),
-              // App 外显示 (the overlay).
-              const PetOverlaySettingsSection(),
+              // App 外显示 (the overlay). Android-only: it needs a window
+              // service that can draw above other apps.
+              if (AppPlatform.supportsPetOverlay) const PetOverlaySettingsSection(),
             ],
           ),
         ),

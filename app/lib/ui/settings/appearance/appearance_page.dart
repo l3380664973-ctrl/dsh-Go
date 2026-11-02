@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../platform/app_platform.dart';
 import '../../../state/appearance_state.dart';
 import '../../../state/settings_state.dart';
 import '../../common/expand_reveal.dart';
@@ -92,13 +93,16 @@ class AppearancePage extends ConsumerWidget {
           title: l10n.pluginsFeatureIcons,
           children: [SpotAnchor(spot: Spots.tileStyle, child: const TileStylePicker())],
         ),
-        SettingsSection(
-          title: l10n.pluginsAppIcon,
-          children: [
-            SpotAnchor(spot: Spots.appIcon, child: const AppIconPicker()),
-            const IconShortcutTile(),
-          ],
-        ),
+        // Launcher icon and picture shortcut are Android launcher features
+        // (`dsh/app`, `dsh/picture_shortcut`); iOS gets its icon from the bundle.
+        if (AppPlatform.supportsLauncherIconCustomisation)
+          SettingsSection(
+            title: l10n.pluginsAppIcon,
+            children: [
+              SpotAnchor(spot: Spots.appIcon, child: const AppIconPicker()),
+              const IconShortcutTile(),
+            ],
+          ),
         SettingsSection(
           title: l10n.launchScreenTitle,
           footer: Text(l10n.launchFooter),

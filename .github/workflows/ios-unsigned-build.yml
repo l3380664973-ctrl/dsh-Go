@@ -1,0 +1,78 @@
+name: ios-unsigned-build
+
+# iOS 包只能在 macOS 上产出。这个工作流用 GitHub 的 macOS runner 编译
+# 未签名 .app 并打成未签名 IPA，产物用于 AltStore / SideStore 自签安装，
+# 或交给有开发者账号的 Mac 重新签名。
+#
+# 触发：手动（Actions → ios-unsigned-build → Run workflow）或推 tag。
+on:
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: 'Version name (e.g. 1.0.9)'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'ios-v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Flutter 3.47.7
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Toolchain info
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: analyze
+        run: flutter analyze
+
+      - name: pod install
+        working-directory: app/ios
+        run: pod install --repo-update
+
+      - name: Build (no codesign)
+        run: |
+          NAME="${{ github.event.inputs.build_name }}"
+          if [ -n "$NAME" ]; then
+            flutter build ios --release --no-codesign --build-name "$NAME"
+          else
+            flutter build ios --release --no-codesign
+          fi
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          (cd build/ipa && zip -qry ../Runner-unsigned.ipa Payload)
+          shasum -a 256 build/Runner-unsigned.ipa | tee build/Runner-unsigned.ipa.sha256
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-unsigned-ipa
+          path: |
+            app/build/Runner-unsigned.ipa
+            app/build/Runner-unsigned.ipa.sha256
+          retention-days: 30
