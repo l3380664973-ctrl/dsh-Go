@@ -1,0 +1,73 @@
+name: ios-unsigned-build-intel
+
+# 与 ios-unsigned-build 完全相同的产物，只把机器换成 Intel（macOS arm64
+# runner 经常因为容量拿不到机器，见 run 41475460381 的 annotation）。
+# 两个工作流可以同时排队，谁先拿到机器谁出包。
+on:
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: 'Version name (e.g. 1.0.9)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runner info
+        run: |
+          uname -m
+          sw_vers
+
+      - name: Flutter 3.47.7
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Toolchain info
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: analyze
+        run: flutter analyze
+
+      - name: Build (no codesign)
+        run: |
+          NAME="${{ github.event.inputs.build_name }}"
+          if [ -n "$NAME" ]; then
+            flutter build ios --release --no-codesign --build-name "$NAME"
+          else
+            flutter build ios --release --no-codesign
+          fi
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          test -d "$APP"
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          (cd build/ipa && zip -qry ../Runner-unsigned-ipa.zip Payload)
+          shasum -a 256 build/Runner-unsigned-ipa.zip | tee build/Runner-unsigned-ipa.zip.sha256
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-unsigned-ipa-intel
+          path: |
+            app/build/Runner-unsigned-ipa.zip
+            app/build/Runner-unsigned-ipa.zip.sha256
+          retention-days: 30
