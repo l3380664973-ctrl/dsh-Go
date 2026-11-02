@@ -73,7 +73,7 @@ Android 专属功能不是删掉，而是**入口不展示**：
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | **M0** | `ios/` 工程、能力开关层、入口门控、`flutter analyze` 通过、GH Actions 工作流 | ✅ 已完成（见下） |
-| **M1** | 远程-only 收口：iOS 上默认主机强制为远程、引导与空态文案、iOS 上禁用本机引擎相关 provider、隐藏空白版入口（`AdaptiveRail.onWeb`） | 待做 |
+| **M1** | 远程-only 收口：iOS 上默认主机强制为远程、引导与空态文案、iOS 上禁用本机引擎相关 provider、隐藏空白版入口（`AdaptiveRail.onWeb`） | ✅ 已完成（见下） |
 | **M2** | DSH Remote 路径的 iOS 验证（`flutter_webrtc` 的 ICE/TURN 在 iOS 上未验证，上游只在 Android 上跑过 P2P 探针） | 待做 |
 | **M3** | iOS 平台层：本地通知（`UNUserNotificationCenter`）、后台重连策略、深链回跳、语音输入、`webview_flutter_wkwebview` 内嵌网页 | 待做 |
 | **M4** | Cupertino 细节（`ui/theme/app_theme.dart` 已有 `TargetPlatform` 分支）、TestFlight / 自签分发 | 待做 |
@@ -90,6 +90,25 @@ Android 专属功能不是删掉，而是**入口不展示**：
 | `app/pubspec.yaml` | 增加 `webview_flutter_wkwebview` |
 | `flutter analyze` | **No issues found**（169 秒，全量 1724 个 dart 文件） |
 | CI | `.github/workflows/ios-unsigned-build.yml`（macOS 15 + Flutter 3.47.7 → 未签名 IPA + SHA256 artifact） |
+
+### M1 实际产出（已验证）
+
+iOS 上没有任何路径能走进本机引擎：
+
+| 位置 | 处理 |
+| --- | --- |
+| `state/hosts_state.dart` | 新增 `HostRef.unusableHere`：iOS 上占位的「本机」= 还没有主机 |
+| `ui/chat/chat_screen.dart` | 空态在 iOS 上给的是「添加远程主机 → 远程主机页」，不是「安装运行环境」（`idleOrRemote`） |
+| `ui/shell/root_gate.dart` | iOS 首启**跳过整套 onboarding**（没有运行环境要装、没有无障碍要授权）；`_maybeAutoStart` 直接返回，不启动引擎 |
+| `ui/remote/remote_screen.dart` | iOS 上新加的 SSH 主机立即生效（本地没有东西要和它抢） |
+| `ui/shell/adaptive/adaptive_rail.dart` + `home_shell.dart` | 「网页版」键改成可空，iOS 上不渲染 |
+| `ui/shell/quick_panel.dart` + `ui/settings/quick_panel_items_sheet.dart` | 快捷入口及其设置面板都过滤掉「本机网页版 / 本机引擎」 |
+| `ui/settings/index/settings_pages.dart` | `dshgo://open/` 深链里的 引擎/后台/系统权限/手机操控 在 iOS 上落到远程主机页 |
+| `ui/update/update_tiles.dart` | APK 自更新的两行在 iOS 上不渲染 |
+
+注意：这些模块的**代码仍在树里**（同一份树也要构建 Android，且上游不接受外部 PR），只是 iOS 上不可达；`app/android` 的 Kotlin 与 `runtime/` 不参与 iOS 构建。
+
+验证：`flutter analyze` → No issues found；定向测试 137 + 81 + 165 全过；10 个 update golden 在原始 `main` 上同样失败（字体替换所致）。
 
 ## 6. 构建
 

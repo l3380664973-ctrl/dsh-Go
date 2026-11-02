@@ -45,10 +45,7 @@ jobs:
       - name: analyze
         run: flutter analyze
 
-      - name: pod install
-        working-directory: app/ios
-        run: pod install --repo-update
-
+      # `flutter build ios` runs `pod install` itself from app/ios/Podfile.
       - name: Build (no codesign)
         run: |
           NAME="${{ github.event.inputs.build_name }}"
