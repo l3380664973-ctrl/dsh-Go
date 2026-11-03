@@ -1,0 +1,77 @@
+name: ios-simulator-screenshot
+
+# 不需要 Apple ID、不需要 iPhone：在 macOS runner 上启动 iOS 模拟器
+# （Apple 官方的 iOS Simulator），把 App 装进去、打开、截图上传。
+# 模拟器不校验签名，所以 --no-codesign 的产物直接能跑。
+on:
+  workflow_dispatch:
+    inputs:
+      wait_seconds:
+        description: 'Seconds to wait after launch before the screenshot'
+        required: false
+        default: '20'
+
+jobs:
+  screenshot:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Flutter 3.47.7
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: Patch iOS plugin sources
+        working-directory: .
+        run: bash tooling/ios-ci-plugin-patches.sh
+
+      - name: Build for the simulator
+        run: flutter build ios --simulator --debug
+
+      - name: Boot an iPhone simulator, install, launch, screenshot
+        run: |
+          set -euo pipefail
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)["devices"]
+          ids = [x["udid"] for rt, xs in d.items() for x in xs if x["name"].startswith("iPhone")]
+          print(ids[0] if ids else "")')
+          echo "device: $DEVICE"
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
+          xcrun simctl launch "$DEVICE" io.github.ccch1mneyyy.dshApp || true
+          sleep "${{ github.event.inputs.wait_seconds }}"
+          mkdir -p shots
+          xcrun simctl io "$DEVICE" screenshot shots/01-first-screen.png || true
+          # A second shot after a tap on the middle of the screen (opens the
+          # host sheet / settings depending on what is on screen).
+          xcrun simctl io "$DEVICE" screenshot shots/02-idle.png || true
+          ls -la shots
+
+      - name: App logs (crash diagnosis)
+        if: always()
+        run: |
+          xcrun simctl spawn booted log show --last 3m --style compact \
+            --predicate 'process == "Runner"' > ../runner-log.txt || true
+          tail -60 ../runner-log.txt || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-shots
+          path: |
+            app/shots/*.png
+            runner-log.txt
+          retention-days: 30
