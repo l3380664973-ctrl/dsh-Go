@@ -114,16 +114,36 @@ iOS 上没有任何路径能走进本机引擎：
 
 iOS 包**只能**在 macOS + Xcode 上产出（Windows / Linux 都不行）。
 
-```bash
-# macOS，本地签名装到自己手机
-cd app && flutter pub get && flutter pub get --platforms ios
-cd ios && pod install
-flutter build ios --release        # 需要 Xcode 登录的开发者账号
+### 云构建（已跑通，2026-11-03）
 
-# 出未签名 IPA（GitHub Actions 已配好）
-# Actions → ios-unsigned-build → Run workflow → 下载 Runner-unsigned-ipa
-# 再用 AltStore / SideStore 自签安装（免费 Apple ID 签的包 7 天过期）
+`workflow_dispatch` 跑 `ios-unsigned-build-intel`，在 GitHub 的 Intel macOS runner 上出未签名包；run `41485265586` 的 11 步全部通过，产物 26.4 MB：
+
+| 校验项 | 结果 |
+| --- | --- |
+| SHA256 | `35311009364cc48fc167199d9007fb5cc9c3a4c8ce688b8acde51134d12db1e4`（与工作流自算一致） |
+| `CFBundleIdentifier` | `io.github.ccch1mneyyy.dshApp` |
+| 显示名 / 版本 | DSH Go / 1.0.9 (1) |
+| `MinimumOSVersion` | 15.0 |
+| URL scheme | `dshgo` ✓ |
+| 权限用途文案 | 本地网络 / 相册 / 相机 / 麦克风 / 语音识别 ✓ |
+| `Frameworks/` | Flutter、App（32 MB AOT）、objective_c、**WebRTC（12 MB）** → DSH Remote 的 P2P 栈确实编进去了 |
+
+出包时撞到的三个坑（都已在仓库里修好，值得记住）：
+
+| # | 现象 | 原因 | 修法 |
+| --- | --- | --- | --- |
+| 1 | 排队 15 分钟后 job 被取消、0 步执行 | 免费额度下 `macos-15`（arm64）容量不足，annotation 明写 "may experience longer queue times" | 改用 `macos-15-intel`，立即拿到机器；两个变体都留在仓库 |
+| 2 | `Swift Compiler Error: ... 'NWPath' has no member 'isUltraConstrained'` | `connectivity_plus` 7.3.2 用了更新 iOS SDK 才有的 API，runner 是 Xcode 16.4 | `tooling/ios-ci-plugin-patches.sh` 把该调用改成 `false`（幂等；App 不依赖 ultra-constrained 语义） |
+| 3 | `Error (Xcode): The sandbox is not in sync with the Podfile.lock` | 手写 Podfile 与 Flutter 3.47 的 Swift Package Manager 混用 | 删掉 Podfile：3.47 下所有 iOS 插件都是 Swift Package，本就不需要 CocoaPods |
+
+### 本地 Mac
+
+```bash
+cd app && flutter pub get
+flutter build ios --release     # 需要 Xcode 登录的开发者账号
 ```
+
+装到手机上：用 AltStore / SideStore / Sideloadly 自签（免费 Apple ID 签的包 7 天过期），或把未签名 IPA 交给有开发者账号的机器重签。
 
 ## 7. 已知阻塞与风险
 
