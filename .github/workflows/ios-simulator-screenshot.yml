@@ -52,21 +52,24 @@ jobs:
           xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
           mkdir -p shots
           set -x
-          # --console-pty attaches the app's stdout/stderr: every uncaught Dart
-          # exception and Flutter error lands here, which is what a blank screen
-          # usually hides. It never exits on its own, so `timeout` bounds it and
-          # `wait` reaps it — a bare background child makes the step hang.
-          ( timeout 70 xcrun simctl launch --console-pty "$DEVICE" io.github.ccch1mneyyy.dshApp \
-              > app-log.txt 2>&1 ) &
+          # --console-pty attaches the app's stdout/stderr (uncaught Dart
+          # exceptions land there). macOS has no GNU `timeout`, so the child is
+          # killed by hand and reaped with `wait`; a bare background child would
+          # keep the step alive forever.
+          xcrun simctl launch --console-pty "$DEVICE" io.github.ccch1mneyyy.dshApp > app-log.txt 2>&1 &
           LAUNCHER=$!
           for t in 10 30 60; do
             sleep 10
             xcrun simctl io "$DEVICE" screenshot "shots/${t}s.png" || true
           done
-          wait "$LAUNCHER" || true
+          kill -TERM "$LAUNCHER" 2>/dev/null || true
+          sleep 2
+          kill -KILL "$LAUNCHER" 2>/dev/null || true
+          wait "$LAUNCHER" 2>/dev/null || true
           set +x
-          echo "--- app-log.txt (Dart side) ---"
-          tail -120 app-log.txt || true
+          echo "=== app-log.txt (Dart side) ==="
+          cat app-log.txt || true
+          echo "=== 截图 ==="
           ls -la shots
 
       - name: App logs (crash diagnosis)
