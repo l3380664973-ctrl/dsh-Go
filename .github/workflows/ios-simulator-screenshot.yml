@@ -50,13 +50,18 @@ jobs:
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
-          xcrun simctl launch "$DEVICE" io.github.ccch1mneyyy.dshApp || true
-          sleep "${{ github.event.inputs.wait_seconds }}"
           mkdir -p shots
-          xcrun simctl io "$DEVICE" screenshot shots/01-first-screen.png || true
-          # A second shot after a tap on the middle of the screen (opens the
-          # host sheet / settings depending on what is on screen).
-          xcrun simctl io "$DEVICE" screenshot shots/02-idle.png || true
+          # --console-pty attaches the app's stdout/stderr: every uncaught Dart
+          # exception and Flutter error lands here, which is what a blank screen
+          # usually hides. Keep it running in the background while we screenshot.
+          ( xcrun simctl launch --console-pty "$DEVICE" io.github.ccch1mneyyy.dshApp \
+              > app-log.txt 2>&1 & ) || true
+          for t in 10 30 60; do
+            sleep 10
+            xcrun simctl io "$DEVICE" screenshot "shots/${t}s.png" || true
+          done
+          echo "--- app-log.txt (Dart side) ---"
+          tail -80 app-log.txt || true
           ls -la shots
 
       - name: App logs (crash diagnosis)
@@ -73,5 +78,6 @@ jobs:
           name: ios-simulator-shots
           path: |
             app/shots/*.png
+            app/app-log.txt
             runner-log.txt
           retention-days: 30
