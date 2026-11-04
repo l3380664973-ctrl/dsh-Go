@@ -145,8 +145,25 @@ flutter build ios --release     # 需要 Xcode 登录的开发者账号
 
 装到手机上：用 AltStore / SideStore / Sideloadly 自签（免费 Apple ID 签的包 7 天过期），或把未签名 IPA 交给有开发者账号的机器重签。
 
+### 模拟器实跑（不需要 Apple ID、不需要 iPhone）
+
+`ios-simulator-screenshot` 工作流在 macOS runner 上启动 Apple 官方的 iOS 模拟器，装上 App、启动、截图并上传，不需要任何签名。run `41668873817` 通过，结果：
+
+| 观察点 | 结果 |
+| --- | --- |
+| 安装 | 模拟器桌面上出现 **DSH Go** 图标 |
+| 首帧 | 启动后 **10~30 秒**才出画面（debug + JIT；release 会快得多），所以早期在 20 秒抓的图是白屏，不是故障 |
+| 界面 | 顶栏「New chat · Not connected」+「Choose model」，空态「Keep using DSH…on your phone」+ **Manage remote hosts** 按钮，底部输入条「Connect to the engine to send」，宠物渲染正常 |
+| M1 收口 | **空态给的是「管理远程主机」，不是「安装运行环境」** —— iOS 远程-only 的收口在真渲染下成立 |
+| 语言 | 跟随系统（模拟器是英文环境），中文跟随系统时会切中文 |
+
+踩过的两个 CI 坑：`--console-pty` 不清场子会让步骤永久挂住；macOS 自带环境**没有 GNU `timeout`**（报 `timeout: command not found`），改用 kill + wait。
+
+截图存放在工作机 `Z:\DSH-Go-ipa\ios-screenshots\`（10s/30s/60s 三张）。
+
 ## 7. 已知阻塞与风险
 
+0. **上游没有 iOS 端**：仓库 10 个 release 全部只有 `arm64.apk`，没有 IPA，也没有 ios 分支。上游 issue #264（open）是自己做的 iOS 远程客户端可行性分析，明确「只做远程客户端」，但**没有落地代码**——本分支就是那份分析的实现。
 1. **没有 Mac 就打不出包**（当前工作机是 Windows）。选项：借 Mac、云 Mac、或上面的 GH Actions 出未签名 IPA 再自签。费用与流程见技术方案文档。
 2. **WebRTC 在 iOS 上未验证**：`packages/dsh_remote/README.md` 状态表只写了 "Real P2P and Relay-only probes pass on Android 35 x86_64"。M1 先做 SSH 路径可完全绕开这个风险。
 3. **iOS 后台限制**：长回合切后台可能断流，靠 `DshMux` 的退避重连 + 回前台 resync 兜底，M3 再补通知。
